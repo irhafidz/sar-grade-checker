@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SAR Grade Submission Checker (Live)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .enabled { color: green; font-weight: bold; }
+    .disabled { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>SAR Grade Submission Checker (Live)</h1>
+  <p>This page pulls live data from Google Sheets and determines if grade submission is enabled.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Mata Kuliah</th>
+        <th>Kelas</th>
+        <th>Semester</th>
+        <th>Tahun Ajaran</th>
+        <th>Capaian</th>
+        <th>Status</th>
+        <th>Can Submit Grades?</th>
+      </tr>
+    </thead>
+    <tbody id="courseTable"></tbody>
+  </table>
+
+  <script>
+    const sarURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQAWbRwUIzfvA91ajunfyy8sjWZxvF8FwcWKO1XIHXiDAF4JjSjx9puhU4tMCFgIw/pub?gid=552452774&single=true&output=csv";
+    const courseURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQAWbRwUIzfvA91ajunfyy8sjWZxvF8FwcWKO1XIHXiDAF4JjSjx9puhU4tMCFgIw/pub?gid=490154702&single=true&output=csv";
+
+    let sarData = [];
+    let courseData = [];
+
+    function matchCourseStatus(course) {
+      const match = sarData.find(row =>
+        row['Mata Kuliah'] === course['Mata Kuliah'] &&
+        row['Kelas'] === course['Kelas'] &&
+        row['Semester'] === course['Semester'] &&
+        row['Tahun Ajaran'] === course['Tahun Ajaran']
+      );
+      return match && match['Capaian'] && match['Status'] === 'Submitted';
+    }
+
+    function renderTable() {
+      const table = document.getElementById('courseTable');
+      courseData.forEach(course => {
+        const matched = sarData.find(row =>
+          row['Mata Kuliah'] === course['Mata Kuliah'] &&
+          row['Kelas'] === course['Kelas'] &&
+          row['Semester'] === course['Semester'] &&
+          row['Tahun Ajaran'] === course['Tahun Ajaran']
+        );
+
+        const capaian = matched ? matched['Capaian'] || '-' : '-';
+        const status = matched ? matched['Status'] || '-' : '-';
+        const canSubmit = matched && matched['Capaian'] && matched['Status'] === 'Submitted';
+
+        const row = `<tr>
+          <td>${course['Mata Kuliah']}</td>
+          <td>${course['Kelas']}</td>
+          <td>${course['Semester']}</td>
+          <td>${course['Tahun Ajaran']}</td>
+          <td>${capaian}</td>
+          <td>${status}</td>
+          <td class="${canSubmit ? 'enabled' : 'disabled'}">${canSubmit ? '✅ Enabled' : '❌ Disabled'}</td>
+        </tr>`;
+        table.innerHTML += row;
+      });
+    }
+
+    function fetchData() {
+      Papa.parse(sarURL, {
+        download: true,
+        header: true,
+        complete: results => {
+          sarData = results.data;
+          Papa.parse(courseURL, {
+            download: true,
+            header: true,
+            complete: results => {
+              courseData = results.data;
+              renderTable();
+            }
+          });
+        }
+      });
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
